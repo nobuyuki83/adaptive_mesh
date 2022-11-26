@@ -37,3 +37,4 @@ build
 build_xcode
 cmake-build-debug
 .idea
+!bunny_1k.obj
