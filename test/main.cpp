@@ -83,11 +83,15 @@ int main() {
                      std::string(PATH_PROJECT_SOURCE_DIR) + "/bunny_1k.obj");
 
   adaptive::Mesh am(a_tri2vtx, a_vtx2xyz);
-  am.split_edge({286, 22,
-                 369, 98,
-                 357, 135,
-                 95, 391,
-                 0, 381});
+  am.split_edge(286, 22);
+  am.split_edge(369, 98);
+  am.split_edge(357, 135);
+  am.split_edge(95, 391);
+  am.split_edge(0, 381);
+  am.collapse_edge(427, 303);
+  am.collapse_edge(8, 288);
+  am.collapse_edge(179, 55);
+  am.cleanup();
   const std::vector<unsigned int> b_tri2vtx = am.F();
   Eigen::Matrix<double, -1, 3, Eigen::RowMajor> b_vtx2xyz = am.V();
   save_wavefront_obj("hoge.obj", b_tri2vtx, b_vtx2xyz);

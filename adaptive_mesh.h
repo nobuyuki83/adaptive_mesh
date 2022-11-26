@@ -334,7 +334,7 @@ bool DeleteTri(
   return true;
 }
 
-bool CollapseEdge_MeshDTri(
+bool collapse_edge(
     const unsigned int itri_del,
     const unsigned int ied_del,
     std::vector<Vtx> &vtxs,
@@ -491,7 +491,7 @@ bool CollapseEdge_MeshDTri(
       assert(jtri < tris.size() && jnoel_c < 3 && tris[jtri].v[jnoel_c] == ipoZ);
       if (!move_ccw(jtri, jnoel_c, itD, tris)) { break; }
     }
-    for (auto & itr : aItIn) {
+    for (auto &itr: aItIn) {
       const unsigned int it0 = itr.first;
       const unsigned int in0 = itr.second;
       assert(tris[it0].v[in0] == ipoZ);
@@ -633,24 +633,76 @@ class Mesh {
     assert_mesh(vtxs, tris);
   }
 
-  void split_edge(const std::vector<unsigned int> &edges) {
-    for (unsigned int ie = 0; ie < edges.size() / 2; ++ie) {
-      assert(vecs.size() == vtxs.size());
-      auto ip0 = edges[ie * 2 + 0];
-      auto ip1 = edges[ie * 2 + 1];
-      unsigned int itri, inotri0, inotri1;
-      bool is_edge = find_edge_from_two_points(
-          itri, inotri0, inotri1,
-          ip0, ip1, vtxs, tris);
-      if (!is_edge) { continue; }
-      unsigned int iedge = 3 - inotri0 - inotri1;
-      unsigned int ipo_ins = vtxs.size();
-      vtxs.resize(ipo_ins + 1);
-      insert_point_to_edge(ipo_ins, itri, iedge, vtxs, tris);
-      vecs.emplace_back(((vecs[ip0] + vecs[ip1])) * 0.5);
+  unsigned int split_edge(unsigned int ip0, unsigned int ip1) {
+    unsigned int itri, inotri0, inotri1;
+    bool is_edge = find_edge_from_two_points(
+        itri, inotri0, inotri1,
+        ip0, ip1, vtxs, tris);
+    if (!is_edge) { return UINT_MAX; }
+    unsigned int iedge = 3 - inotri0 - inotri1;
+    unsigned int ipo_ins = vtxs.size();
+    vtxs.resize(ipo_ins + 1);
+    insert_point_to_edge(ipo_ins, itri, iedge, vtxs, tris);
+    vecs.emplace_back(((vecs[ip0] + vecs[ip1])) * 0.5);
+    assert_tris(tris);
+    assert_mesh(vtxs, tris);
+    return ipo_ins;
+  }
+
+  /**
+   * @param ip0 point index.
+   * @param ip1 point index. This point will be deleted
+   * @return true => if the edge was collapsed, false => edge cannot be collapsed. nothing happens to the mesh
+   */
+  unsigned int collapse_edge(unsigned int ip0, unsigned int ip1) {
+    assert( vtxs.size() == vecs.size() );
+    unsigned int itri, inotri0, inotri1;
+    bool is_edge = find_edge_from_two_points(
+        itri, inotri0, inotri1,
+        ip0, ip1, vtxs, tris);
+    if (!is_edge) { return false; }
+    unsigned int iedge = 3 - inotri0 - inotri1;
+    if (::adaptive::collapse_edge(itri, iedge, vtxs, tris)) {
+      assert(vtxs[ip1].e == UINT_MAX);
+      vecs[ip0] = (vecs[ip0] + vecs[ip1]) * 0.5;
       assert_tris(tris);
       assert_mesh(vtxs, tris);
+      return true;
     }
+    return false;
+  }
+
+  /**
+   * remove unreferenced vertex
+   * @return mapping between old vertex ID to new vertex ID
+   */
+  std::vector<unsigned int> cleanup() {
+    assert( vtxs.size() == vecs.size() );
+    std::vector<unsigned int> old2new(vtxs.size(), UINT_MAX);
+    unsigned int num_vtx_new = 0;
+    for(unsigned int iv_old=0; iv_old<vtxs.size(); ++iv_old){
+      if( vtxs[iv_old].e == UINT_MAX ){ continue; }
+      old2new[iv_old] = num_vtx_new;
+      num_vtx_new += 1;
+    }
+    std::vector<Vtx> vtxs_new(num_vtx_new);
+    std::vector<Eigen::Vector3d> vecs_new(num_vtx_new);
+    for(unsigned int iv_old=0; iv_old<vtxs.size(); ++iv_old){
+      if( old2new[iv_old] == UINT_MAX ){ continue; }
+      unsigned int iv_new = old2new[iv_old];
+      vtxs_new[iv_new] = vtxs[iv_old];
+      vecs_new[iv_new] = vecs[iv_old];
+    }
+    for(auto & tri : tris){
+      tri.v[0] = old2new[tri.v[0]];
+      tri.v[1] = old2new[tri.v[1]];
+      tri.v[2] = old2new[tri.v[2]];
+    }
+    vtxs = vtxs_new;
+    vecs = vecs_new;
+    assert_tris(tris);
+    assert_mesh(vtxs_new, tris);
+    return old2new;
   }
 
   [[nodiscard]] std::vector<uint32_t> F() const {
