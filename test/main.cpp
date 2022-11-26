@@ -8,7 +8,7 @@
 
 void load_wavefront_obj(
     std::vector<unsigned int> &tri2vtx,
-    std::vector<double> &vtx2xyz,
+    Eigen::Matrix<double, -1, 3, Eigen::RowMajor> &vtx2xyz,
     const std::filesystem::path &file_path) {
   std::ifstream fin;
   fin.open(file_path);
@@ -16,9 +16,9 @@ void load_wavefront_obj(
     std::cout << "File Read Fail" << std::endl;
     return;
   }
-  vtx2xyz.clear();
+  std::vector<double> vtx2xyz_stl;
+  vtx2xyz_stl.reserve(256 * 16);
   tri2vtx.clear();
-  vtx2xyz.reserve(256 * 16);
   tri2vtx.reserve(256 * 16);
   const int BUFF_SIZE = 256;
   char buff[BUFF_SIZE];
@@ -32,9 +32,9 @@ void load_wavefront_obj(
         is >> str >> x >> y >> z;
 //        sscanf(buff, "%s %lf %lf %lf", str, &x, &y, &z);
       }
-      vtx2xyz.push_back(x);
-      vtx2xyz.push_back(y);
-      vtx2xyz.push_back(z);
+      vtx2xyz_stl.push_back(x);
+      vtx2xyz_stl.push_back(y);
+      vtx2xyz_stl.push_back(z);
     }
     if (buff[0] == 'f') {
       char str[256];
@@ -49,9 +49,12 @@ void load_wavefront_obj(
       tri2vtx.push_back(i2 - 1);
     }
   }
+  vtx2xyz = Eigen::Map<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(
+      vtx2xyz_stl.data(),
+      static_cast<unsigned int>(vtx2xyz_stl.size() / 3), 3);
 }
 
-void Write_Obj_UniformMesh(
+void save_wavefront_obj(
     const std::string &file_path,
     const std::vector<unsigned int>& elem_vtx,
     const  Eigen::Matrix<double, -1, 3, Eigen::RowMajor>& vtx_xyz ) {
@@ -74,30 +77,19 @@ void Write_Obj_UniformMesh(
 }
 
 int main() {
-  std::cout << "hoge" << std::endl;
   std::vector<unsigned int> a_tri2vtx;
   Eigen::Matrix<double, -1, 3, Eigen::RowMajor> a_vtx2xyz;
-  {
-    std::vector<double> vtx2xyz_stl;
-    load_wavefront_obj(a_tri2vtx, vtx2xyz_stl,
-                       std::string(PATH_PROJECT_SOURCE_DIR) + "/bunny_1k.obj");
-    std::cout << vtx2xyz_stl.size() << std::endl;
-    std::cout << a_tri2vtx.size() << std::endl;
-    a_vtx2xyz = Eigen::Map<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(
-        vtx2xyz_stl.data(),
-        static_cast<unsigned int>(vtx2xyz_stl.size() / 3), 3);
-  }
+  load_wavefront_obj(a_tri2vtx, a_vtx2xyz,
+                     std::string(PATH_PROJECT_SOURCE_DIR) + "/bunny_1k.obj");
 
   adaptive::Mesh am(a_tri2vtx, a_vtx2xyz);
-  {
-    am.split_edge({286, 22,
-                   369, 98,
-                   357, 135,
-                   95, 391,
-                   0, 381});
-  }
+  am.split_edge({286, 22,
+                 369, 98,
+                 357, 135,
+                 95, 391,
+                 0, 381});
   const std::vector<unsigned int> b_tri2vtx = am.F();
   Eigen::Matrix<double, -1, 3, Eigen::RowMajor> b_vtx2xyz = am.V();
-  std::cout << b_tri2vtx.size() / 3 << std::endl;
-  Write_Obj_UniformMesh("hoge.obj", b_tri2vtx, b_vtx2xyz);
+  save_wavefront_obj("hoge.obj", b_tri2vtx, b_vtx2xyz);
+  std::cout << a_tri2vtx.size()/3 << " " << b_tri2vtx.size()/3 << std::endl;
 }

@@ -11,7 +11,7 @@ class Tri {
   }
  public:
   unsigned int v[3];
-  unsigned int s2[3];
+  unsigned int s[3];
 };
 
 class Vtx {
@@ -25,8 +25,8 @@ class Vtx {
 };
 
 void vtx2tri(
-    std::vector<int> &vtx2idx,
-    std::vector<int> &idx2tri,
+    std::vector<unsigned int> &vtx2idx,
+    std::vector<unsigned int> &idx2tri,
     const std::vector<Tri> &tris,
     const unsigned int num_vtx) {
   vtx2idx.assign(num_vtx + 1, 0);
@@ -38,7 +38,7 @@ void vtx2tri(
   for (unsigned int ipoin = 0; ipoin < num_vtx; ipoin++) {
     vtx2idx[ipoin + 1] += vtx2idx[ipoin];
   }
-  const int nelsup = vtx2idx[num_vtx];
+  const unsigned int nelsup = vtx2idx[num_vtx];
   idx2tri.resize(nelsup);
   for (unsigned int itri = 0; itri < tris.size(); itri++) {
     for (unsigned int ipoin0: tris[itri].v) {
@@ -56,8 +56,8 @@ void vtx2tri(
 void tri2tri(
     std::vector<Tri> &tris,
     const unsigned int num_vtx,
-    const std::vector<int> &vtx2idx,
-    const std::vector<int> &idx2vtx) {
+    const std::vector<unsigned int> &vtx2idx,
+    const std::vector<unsigned int> &idx2vtx) {
 
   std::vector<int> tmp_poin(num_vtx, 0);
   unsigned int inpofa[2];
@@ -71,7 +71,7 @@ void tri2tri(
       }
       const unsigned int ipoin0 = inpofa[0];
       bool iflg = false;
-      for (int ielsup = vtx2idx[ipoin0]; ielsup < vtx2idx[ipoin0 + 1]; ielsup++) {
+      for (unsigned int ielsup = vtx2idx[ipoin0]; ielsup < vtx2idx[ipoin0 + 1]; ielsup++) {
         const unsigned int jtri0 = idx2vtx[ielsup];
         if (jtri0 == itri) continue;
         for (unsigned int jedtri = 0; jedtri < 3; jedtri++) {
@@ -84,14 +84,14 @@ void tri2tri(
             }
           }
           if (iflg) {
-            tris[itri].s2[iedtri] = jtri0;
+            tris[itri].s[iedtri] = jtri0;
             break;
           }
         }
         if (iflg) break;
       }
       if (!iflg) {
-        tris[itri].s2[iedtri] = UINT_MAX;
+        tris[itri].s[iedtri] = UINT_MAX;
       }
       for (unsigned int ipofa: inpofa) {
         tmp_poin[ipofa] = 0;
@@ -130,7 +130,7 @@ void initialize(
     vtxs[i3].d = 2;
   }
   {
-    std::vector<int> vtx2idx, idx2tri;
+    std::vector<unsigned int> vtx2idx, idx2tri;
     vtx2tri(vtx2idx, idx2tri,
             tris, vtxs.size());
     tri2tri(tris,
@@ -145,13 +145,12 @@ unsigned int adjacent_edge_idx(
   const unsigned int iv0 = t0.v[(ied0 + 1) % 3];
   const unsigned int iv1 = t0.v[(ied0 + 2) % 3];
   assert(iv0 != iv1);
-  const unsigned int it1 = t0.s2[ied0];
+  const unsigned int it1 = t0.s[ied0];
   assert(it1 != UINT_MAX);
   if (tris[it1].v[1] == iv1 && tris[it1].v[2] == iv0) { return 0; }
   if (tris[it1].v[2] == iv1 && tris[it1].v[0] == iv0) { return 1; }
   if (tris[it1].v[0] == iv1 && tris[it1].v[1] == iv0) { return 2; }
   assert(false);
-  return UINT_MAX;
 }
 
 bool insert_point_to_edge(
@@ -162,16 +161,16 @@ bool insert_point_to_edge(
     std::vector<Tri> &tris) {
   assert(itri_ins < tris.size());
   assert(ipo_ins < vtxs.size());
-  assert(tris[itri_ins].s2[ied_ins] != UINT_MAX);
+  assert(tris[itri_ins].s[ied_ins] != UINT_MAX);
 
-  const unsigned int itri_adj = tris[itri_ins].s2[ied_ins];
+  const unsigned int itri_adj = tris[itri_ins].s[ied_ins];
   const unsigned int ied_adj = adjacent_edge_idx(tris[itri_ins], ied_ins, tris);
   assert(itri_adj < tris.size() && ied_ins < 3);
 
   const unsigned int itri0 = itri_ins;
   const unsigned int itri1 = itri_adj;
-  const unsigned int itri2 = static_cast<unsigned int>(tris.size());
-  const unsigned int itri3 = static_cast<unsigned int>(tris.size() + 1);
+  const auto itri2 = static_cast<unsigned int>(tris.size());
+  const auto itri3 = static_cast<unsigned int>(tris.size() + 1);
 
   tris.resize(tris.size() + 2);
 
@@ -188,8 +187,8 @@ bool insert_point_to_edge(
 
   assert(oldA.v[inoA1] == oldB.v[inoB2]);
   assert(oldA.v[inoA2] == oldB.v[inoB1]);
-  assert(oldA.s2[inoA0] == itri1);
-  assert(oldB.s2[inoB0] == itri0);
+  assert(oldA.s[inoA0] == itri1);
+  assert(oldB.s[inoB0] == itri0);
 
   vtxs[ipo_ins].e = itri0;
   vtxs[ipo_ins].d = 0;
@@ -207,15 +206,15 @@ bool insert_point_to_edge(
     tri0.v[0] = ipo_ins;
     tri0.v[1] = oldA.v[inoA2];
     tri0.v[2] = oldA.v[inoA0];
-    tri0.s2[0] = oldA.s2[inoA1];
-    tri0.s2[1] = itri1;
-    tri0.s2[2] = itri3;
+    tri0.s[0] = oldA.s[inoA1];
+    tri0.s[1] = itri1;
+    tri0.s[2] = itri3;
   }
-  if (oldA.s2[inoA1] != UINT_MAX) {
-    const unsigned int jt0 = oldA.s2[inoA1];
+  if (oldA.s[inoA1] != UINT_MAX) {
+    const unsigned int jt0 = oldA.s[inoA1];
     assert(jt0 < tris.size());
     const unsigned int jno0 = adjacent_edge_idx(oldA, inoA1, tris);
-    tris[jt0].s2[jno0] = itri0;
+    tris[jt0].s[jno0] = itri0;
   }
 
   {
@@ -223,15 +222,15 @@ bool insert_point_to_edge(
     tri1.v[0] = ipo_ins;
     tri1.v[1] = oldA.v[inoA0];
     tri1.v[2] = oldA.v[inoA1];
-    tri1.s2[0] = oldA.s2[inoA2];
-    tri1.s2[1] = itri2;
-    tri1.s2[2] = itri0;
+    tri1.s[0] = oldA.s[inoA2];
+    tri1.s[1] = itri2;
+    tri1.s[2] = itri0;
   }
-  if (oldA.s2[inoA2] != UINT_MAX) {
-    const unsigned int jt0 = oldA.s2[inoA2];
+  if (oldA.s[inoA2] != UINT_MAX) {
+    const unsigned int jt0 = oldA.s[inoA2];
     assert(jt0 < tris.size());
     const unsigned int jno0 = adjacent_edge_idx(oldA, inoA2, tris);
-    tris[jt0].s2[jno0] = itri1;
+    tris[jt0].s[jno0] = itri1;
   }
 
   {
@@ -239,15 +238,15 @@ bool insert_point_to_edge(
     tri2.v[0] = ipo_ins;
     tri2.v[1] = oldB.v[inoB2];
     tri2.v[2] = oldB.v[inoB0];
-    tri2.s2[0] = oldB.s2[inoB1];
-    tri2.s2[1] = itri3;
-    tri2.s2[2] = itri1;
+    tri2.s[0] = oldB.s[inoB1];
+    tri2.s[1] = itri3;
+    tri2.s[2] = itri1;
   }
-  if (oldB.s2[inoB1] != UINT_MAX) {
-    const unsigned int jt0 = oldB.s2[inoB1];
+  if (oldB.s[inoB1] != UINT_MAX) {
+    const unsigned int jt0 = oldB.s[inoB1];
     assert(jt0 < tris.size());
     const unsigned int jno0 = adjacent_edge_idx(oldB, inoB1, tris);
-    tris[jt0].s2[jno0] = itri2;
+    tris[jt0].s[jno0] = itri2;
   }
 
   {
@@ -255,15 +254,15 @@ bool insert_point_to_edge(
     tri3.v[0] = ipo_ins;
     tri3.v[1] = oldB.v[inoB0];
     tri3.v[2] = oldB.v[inoB1];
-    tri3.s2[0] = oldB.s2[inoB2];
-    tri3.s2[1] = itri0;
-    tri3.s2[2] = itri2;
+    tri3.s[0] = oldB.s[inoB2];
+    tri3.s[1] = itri0;
+    tri3.s[2] = itri2;
   }
-  if (oldB.s2[inoB2] != UINT_MAX) {
-    const unsigned int jt0 = oldB.s2[inoB2];
+  if (oldB.s[inoB2] != UINT_MAX) {
+    const unsigned int jt0 = oldB.s[inoB2];
     assert(jt0 < tris.size());
     const unsigned int jno0 = adjacent_edge_idx(oldB, inoB2, tris);
-    tris[jt0].s2[jno0] = itri3;
+    tris[jt0].s[jno0] = itri3;
   }
   return true;
 }
@@ -274,8 +273,8 @@ bool move_ccw(
     unsigned int itri_adj,
     const std::vector<Tri> &tris) {
   const unsigned int inotri1 = (inotri_cur + 1) % 3;
-  if (tris[itri_cur].s2[inotri1] == itri_adj) { return false; }
-  const unsigned int itri_nex = tris[itri_cur].s2[inotri1];
+  if (tris[itri_cur].s[inotri1] == itri_adj) { return false; }
+  const unsigned int itri_nex = tris[itri_cur].s[inotri1];
   assert(itri_nex < tris.size());
   const unsigned int ino2 = adjacent_edge_idx(tris[itri_cur], inotri1, tris);
   const unsigned int inotri_nex = (ino2 + 1) % 3;
@@ -291,8 +290,8 @@ bool move_cw(
     unsigned int itri_adj,
     const std::vector<Tri> &tris) {
   const unsigned int inotri1 = (inotri_cur + 2) % 3;
-  if (tris[itri_cur].s2[inotri1] == itri_adj) { return false; }
-  const unsigned int itri_nex = tris[itri_cur].s2[inotri1];
+  if (tris[itri_cur].s[inotri1] == itri_adj) { return false; }
+  const unsigned int itri_nex = tris[itri_cur].s[inotri1];
   assert(itri_nex < tris.size());
   const unsigned int ino2 = adjacent_edge_idx(tris[itri_cur], inotri1, tris);
   const unsigned int inotri_nex = (ino2 + 2) % 3;
@@ -308,10 +307,10 @@ bool DeleteTri(
     std::vector<Tri> &tris) {
   if (itri_to >= tris.size()) return true;
   // -------------
-  assert(tris[itri_to].s2[0] == UINT_MAX);
-  assert(tris[itri_to].s2[1] == UINT_MAX);
-  assert(tris[itri_to].s2[2] == UINT_MAX);
-  assert(tris.size() > 0);
+  assert(tris[itri_to].s[0] == UINT_MAX);
+  assert(tris[itri_to].s[1] == UINT_MAX);
+  assert(tris[itri_to].s[2] == UINT_MAX);
+  assert(!tris.empty());
   const size_t itri_from = tris.size() - 1;
   if (itri_to == itri_from) {
     tris.resize(tris.size() - 1);
@@ -320,12 +319,12 @@ bool DeleteTri(
   tris[itri_to] = tris[itri_from];
   tris.resize(tris.size() - 1);
   for (int iedtri = 0; iedtri < 3; iedtri++) {
-    if (tris[itri_to].s2[iedtri] == UINT_MAX) continue;
-    const unsigned int itri_adj = tris[itri_to].s2[iedtri];
+    if (tris[itri_to].s[iedtri] == UINT_MAX) continue;
+    const unsigned int itri_adj = tris[itri_to].s[iedtri];
     const unsigned int iedtri_adj = adjacent_edge_idx(tris[itri_to], iedtri, tris);
     assert(itri_adj < tris.size());
-    assert(tris[itri_adj].s2[iedtri_adj] == itri_from);
-    tris[itri_adj].s2[iedtri_adj] = itri_to;
+    assert(tris[itri_adj].s[iedtri_adj] == itri_from);
+    tris[itri_adj].s[iedtri_adj] = itri_to;
   }
   for (unsigned int inotri = 0; inotri < 3; inotri++) {
     const unsigned int ipo0 = tris[itri_to].v[inotri];
@@ -341,28 +340,28 @@ bool CollapseEdge_MeshDTri(
     std::vector<Vtx> &vtxs,
     std::vector<Tri> &tris) {
   assert(itri_del < tris.size() && ied_del < 3);
-  if (tris[itri_del].s2[ied_del] == UINT_MAX) {
+  if (tris[itri_del].s[ied_del] == UINT_MAX) {
     std::cout << "Error!-->Not Implemented: Mesh with hole" << std::endl;
     assert(0);
   }
 
-  const unsigned int itri_adj = tris[itri_del].s2[ied_del];
+  const unsigned int itri_adj = tris[itri_del].s[ied_del];
   const unsigned int ied_adj = adjacent_edge_idx(tris[itri_del], ied_del, tris);
   assert(itri_adj < tris.size() && ied_adj < 3);
-  assert(tris[itri_adj].s2[ied_adj] == itri_del);
+  assert(tris[itri_adj].s[ied_adj] == itri_del);
 
   // do nothing and return false if the collapsing edge is on the boundary
-  if (tris[itri_del].s2[(ied_del + 1) % 3] == UINT_MAX) return false;
-  if (tris[itri_del].s2[(ied_del + 2) % 3] == UINT_MAX) return false;
-  if (tris[itri_adj].s2[(ied_adj + 1) % 3] == UINT_MAX) return false;
-  if (tris[itri_adj].s2[(ied_adj + 2) % 3] == UINT_MAX) return false;
+  if (tris[itri_del].s[(ied_del + 1) % 3] == UINT_MAX) return false;
+  if (tris[itri_del].s[(ied_del + 2) % 3] == UINT_MAX) return false;
+  if (tris[itri_adj].s[(ied_adj + 1) % 3] == UINT_MAX) return false;
+  if (tris[itri_adj].s[(ied_adj + 2) % 3] == UINT_MAX) return false;
 
   const unsigned int itA = itri_del;
   const unsigned int itB = itri_adj;
-  const unsigned int itC = tris[itA].s2[(ied_del + 1) % 3];
-  const unsigned int itD = tris[itA].s2[(ied_del + 2) % 3];
-  const unsigned int itE = tris[itB].s2[(ied_adj + 1) % 3];
-  const unsigned int itF = tris[itB].s2[(ied_adj + 2) % 3];
+  const unsigned int itC = tris[itA].s[(ied_del + 1) % 3];
+  const unsigned int itD = tris[itA].s[(ied_del + 2) % 3];
+  const unsigned int itE = tris[itB].s[(ied_adj + 1) % 3];
+  const unsigned int itF = tris[itB].s[(ied_adj + 2) % 3];
 
   const unsigned int inoA0 = ied_del;
   const unsigned int inoA1 = (inoA0 + 1) % 3;
@@ -386,14 +385,14 @@ bool CollapseEdge_MeshDTri(
   const unsigned int inoF0 = adjacent_edge_idx(tris[itB], inoB2, tris);
   const unsigned int inoF1 = (inoF0 + 1) % 3;
 
-  if (tris[itC].s2[inoC2] == itD) { // additinoal two triangles to be deleted
-    assert(tris[itD].s2[inoD1] == itC);
+  if (tris[itC].s[inoC2] == itD) { // additinoal two triangles to be deleted
+    assert(tris[itD].s[inoD1] == itC);
     // TODO: implement this collapse
     return false;
   }
 
-  if (tris[itE].s2[inoE2] == itF) { // additinoal two triangles to be deleted
-    assert(tris[itF].s2[inoF1] == itE);
+  if (tris[itE].s[inoE2] == itF) { // additinoal two triangles to be deleted
+    assert(tris[itF].s[inoF1] == itE);
     // TODO: implement this collapse
     return false;
   }
@@ -445,8 +444,8 @@ bool CollapseEdge_MeshDTri(
 
   assert(oldA.v[inoA1] == oldB.v[inoB2]);
   assert(oldA.v[inoA2] == oldB.v[inoB1]);
-  assert(oldA.s2[inoA0] == itB);
-  assert(oldB.s2[inoB0] == itA);
+  assert(oldA.s[inoA0] == itB);
+  assert(oldB.s[inoB0] == itA);
 
   // ---------------------------------
   // change from there
@@ -459,28 +458,28 @@ bool CollapseEdge_MeshDTri(
   vtxs[ipoX].d = inoD1;
   vtxs[ipoZ].e = UINT_MAX;
 
-  tris[itC].s2[inoC0] = oldA.s2[inoA2];
-  if (oldA.s2[inoA2] != UINT_MAX) {
-    assert(oldA.s2[inoA2] < tris.size());
-    tris[itD].s2[inoD0] = itC;
+  tris[itC].s[inoC0] = oldA.s[inoA2];
+  if (oldA.s[inoA2] != UINT_MAX) {
+    assert(oldA.s[inoA2] < tris.size());
+    tris[itD].s[inoD0] = itC;
   }
 
-  tris[itD].s2[inoD0] = oldA.s2[inoA1];
-  if (oldA.s2[inoA1] != UINT_MAX) {
-    assert(oldA.s2[inoA1] < tris.size());
-    tris[itC].s2[inoC0] = itD;
+  tris[itD].s[inoD0] = oldA.s[inoA1];
+  if (oldA.s[inoA1] != UINT_MAX) {
+    assert(oldA.s[inoA1] < tris.size());
+    tris[itC].s[inoC0] = itD;
   }
 
-  tris[itE].s2[inoE0] = oldB.s2[inoB2];
-  if (oldB.s2[inoB2] != UINT_MAX) {
-    assert(oldB.s2[inoB2] < tris.size());
-    tris[itF].s2[inoF0] = itE;
+  tris[itE].s[inoE0] = oldB.s[inoB2];
+  if (oldB.s[inoB2] != UINT_MAX) {
+    assert(oldB.s[inoB2] < tris.size());
+    tris[itF].s[inoF0] = itE;
   }
 
-  tris[itF].s2[inoF0] = oldB.s2[inoB1];
-  if (oldB.s2[inoB1] != UINT_MAX) {
-    assert(oldB.s2[inoB1] < tris.size());
-    tris[itE].s2[inoE0] = itF;
+  tris[itF].s[inoF0] = oldB.s[inoB1];
+  if (oldB.s[inoB1] != UINT_MAX) {
+    assert(oldB.s[inoB1] < tris.size());
+    tris[itE].s[inoE0] = itF;
   }
 
   { // set triangle vtx index from ipoZ to ipoX
@@ -488,25 +487,25 @@ bool CollapseEdge_MeshDTri(
     unsigned int jtri = itF;
     unsigned int jnoel_c = inoF1;
     for (;;) { // MoveCCW cannot be used here
-      aItIn.push_back(std::make_pair(jtri, jnoel_c));
+      aItIn.emplace_back(jtri, jnoel_c);
       assert(jtri < tris.size() && jnoel_c < 3 && tris[jtri].v[jnoel_c] == ipoZ);
       if (!move_ccw(jtri, jnoel_c, itD, tris)) { break; }
     }
-    for (auto itr = aItIn.begin(); itr != aItIn.end(); ++itr) {
-      const unsigned int it0 = itr->first;
-      const unsigned int in0 = itr->second;
+    for (auto & itr : aItIn) {
+      const unsigned int it0 = itr.first;
+      const unsigned int in0 = itr.second;
       assert(tris[it0].v[in0] == ipoZ);
       tris[it0].v[in0] = ipoX;
     }
   }
 
   {  // isolate two triangles to be deleted
-    tris[itA].s2[0] = UINT_MAX;
-    tris[itA].s2[1] = UINT_MAX;
-    tris[itA].s2[2] = UINT_MAX;
-    tris[itB].s2[0] = UINT_MAX;
-    tris[itB].s2[1] = UINT_MAX;
-    tris[itB].s2[2] = UINT_MAX;
+    tris[itA].s[0] = UINT_MAX;
+    tris[itA].s[1] = UINT_MAX;
+    tris[itA].s[2] = UINT_MAX;
+    tris[itB].s[0] = UINT_MAX;
+    tris[itB].s[1] = UINT_MAX;
+    tris[itB].s[2] = UINT_MAX;
     const unsigned int itri_1st = (itA > itB) ? itA : itB;
     const unsigned int itri_2nd = (itA < itB) ? itA : itB;
     DeleteTri(itri_1st, vtxs, tris);
@@ -579,16 +578,16 @@ void assert_tris(
     assert(tri.v[0] != tri.v[1]);
     assert(tri.v[1] != tri.v[2]);
     assert(tri.v[2] != tri.v[0]);
-    assert((tri.s2[0] != tri.s2[1]) || tri.s2[0] == UINT_MAX);
-    assert((tri.s2[1] != tri.s2[2]) || tri.s2[1] == UINT_MAX);
-    assert((tri.s2[2] != tri.s2[0]) || tri.s2[0] == UINT_MAX);
+    assert((tri.s[0] != tri.s[1]) || tri.s[0] == UINT_MAX);
+    assert((tri.s[1] != tri.s[2]) || tri.s[1] == UINT_MAX);
+    assert((tri.s[2] != tri.s[0]) || tri.s[0] == UINT_MAX);
     for (int iedtri = 0; iedtri < 3; iedtri++) {
-      if (tri.s2[iedtri] == UINT_MAX) continue;
-      assert(tri.s2[iedtri] < tris.size());
-      const unsigned int jtri = tri.s2[iedtri];
+      if (tri.s[iedtri] == UINT_MAX) continue;
+      assert(tri.s[iedtri] < tris.size());
+      const unsigned int jtri = tri.s[iedtri];
       assert(jtri < ntri);
       const unsigned int jno = adjacent_edge_idx(tris[itri], iedtri, tris);
-      assert(tris[jtri].s2[jno] == itri);
+      assert(tris[jtri].s[jno] == itri);
       assert(tris[itri].v[(iedtri + 1) % 3] == tris[jtri].v[(jno + 2) % 3]);
       assert(tris[itri].v[(iedtri + 2) % 3] == tris[jtri].v[(jno + 1) % 3]);
     }
@@ -648,13 +647,13 @@ class Mesh {
       unsigned int ipo_ins = vtxs.size();
       vtxs.resize(ipo_ins + 1);
       insert_point_to_edge(ipo_ins, itri, iedge, vtxs, tris);
-      vecs.push_back(((vecs[ip0] + vecs[ip1])) * 0.5);
+      vecs.emplace_back(((vecs[ip0] + vecs[ip1])) * 0.5);
       assert_tris(tris);
       assert_mesh(vtxs, tris);
     }
   }
 
-  std::vector<uint32_t> F() const {
+  [[nodiscard]] std::vector<uint32_t> F() const {
     std::vector<uint32_t> res(tris.size() * 3);
     for (unsigned int it = 0; it < tris.size(); ++it) {
       res[it * 3 + 0] = tris[it].v[0];
@@ -664,7 +663,7 @@ class Mesh {
     return res;
   }
 
-  Eigen::Matrix<double, -1, 3, Eigen::RowMajor> V() const {
+  [[nodiscard]] Eigen::Matrix<double, -1, 3, Eigen::RowMajor> V() const {
     Eigen::Matrix<double, -1, 3, Eigen::RowMajor> v(vecs.size(), 3);
     for (unsigned int iv = 0; iv < vecs.size(); ++iv) {
       v(iv, 0) = vecs[iv].x();
