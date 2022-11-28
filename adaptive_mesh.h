@@ -523,6 +523,8 @@ bool find_edge_from_two_points(
     const unsigned int ipo1,
     const std::vector<Vtx> &vtxs,
     const std::vector<Tri> &tris) {
+  if (vtxs[ipo0].e == UINT_MAX || vtxs[ipo1].e == UINT_MAX)
+    return false;
   unsigned int itc = vtxs[ipo0].e;
   unsigned int inc = vtxs[ipo0].d;
   for (;;) {  // serch clock-wise
