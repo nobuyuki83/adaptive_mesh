@@ -83,17 +83,19 @@ int main() {
                      std::string(PATH_PROJECT_SOURCE_DIR) + "/bunny_1k.obj");
 
   adaptive::Mesh am(a_tri2vtx, a_vtx2xyz);
-  am.split_edge(286, 22);
-  am.split_edge(369, 98);
-  am.split_edge(357, 135);
-  am.split_edge(95, 391);
-  am.split_edge(0, 381);
-  am.collapse_edge(427, 303);
-  am.collapse_edge(8, 288);
-  am.collapse_edge(179, 55);
+  std::cout << am.split_edge(286, 22) << std::endl;
+  std::cout << am.split_edge(369, 98) << std::endl;
+  std::cout << am.split_edge(357, 135) << std::endl;
+  std::cout << am.split_edge(95, 391) << std::endl;
+  std::cout << am.split_edge(0, 381) << std::endl;
+  std::cout << am.collapse_edge(427, 303) << std::endl;
+  std::cout << am.collapse_edge(8, 288) << std::endl;
+  std::cout << am.collapse_edge(179, 55) << std::endl;
+  std::cout << am.flip_edge(5,79) << std::endl;
   am.cleanup();
   const std::vector<unsigned int> b_tri2vtx = am.F();
   Eigen::Matrix<double, -1, 3, Eigen::RowMajor> b_vtx2xyz = am.V();
   save_wavefront_obj("hoge.obj", b_tri2vtx, b_vtx2xyz);
-  std::cout << a_tri2vtx.size()/3 << " " << b_tri2vtx.size()/3 << std::endl;
+  std::cout << "num_tri_before: " << a_tri2vtx.size()/3 << std::endl;
+  std::cout << "num_tri_end: " << b_tri2vtx.size()/3 << std::endl;
 }

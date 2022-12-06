@@ -618,6 +618,90 @@ void assert_mesh(
 #endif
 }
 
+bool flip_edge(
+    unsigned int itriA,
+    unsigned int ied0,
+    std::vector<Vtx> &aPo,
+    std::vector<Tri> &aTri) {
+  assert(itriA < aTri.size() && ied0 < 3);
+  if (aTri[itriA].s[ied0] == UINT_MAX) { return false; }
+
+  const unsigned int itriB = aTri[itriA].s[ied0];
+  assert(itriB < aTri.size());
+  const unsigned int ied1 = adjacent_edge_idx(aTri[itriA], ied0, aTri);
+  assert(ied1 < 3);
+  assert(aTri[itriB].s[ied1] == itriA);
+
+  const Tri oldA = aTri[itriA];
+  const Tri oldB = aTri[itriB];
+
+  const unsigned int noA0 = ied0;
+  const unsigned int noA1 = (ied0 + 1) % 3;
+  const unsigned int noA2 = (ied0 + 2) % 3;
+
+  const unsigned int noB0 = ied1;
+  const unsigned int noB1 = (ied1 + 1) % 3;
+  const unsigned int noB2 = (ied1 + 2) % 3;
+
+  assert(oldA.v[noA1] == oldB.v[noB2]);
+  assert(oldA.v[noA2] == oldB.v[noB1]);
+
+  aPo[oldA.v[noA1]].e = itriA;
+  aPo[oldA.v[noA1]].d = 0;
+  aPo[oldA.v[noA0]].e = itriA;
+  aPo[oldA.v[noA0]].d = 2;
+  aPo[oldB.v[noB1]].e = itriB;
+  aPo[oldB.v[noB1]].d = 0;
+  aPo[oldB.v[noB0]].e = itriB;
+  aPo[oldB.v[noB0]].d = 2;
+
+  {
+    Tri &triA = aTri[itriA];
+    triA.v[0] = oldA.v[noA1];
+    triA.v[1] = oldB.v[noB0];
+    triA.v[2] = oldA.v[noA0];
+    triA.s[0] = itriB;
+    triA.s[1] = oldA.s[noA2];
+    triA.s[2] = oldB.s[noB1];
+  }
+  if (oldA.s[noA2] != UINT_MAX) {
+    const unsigned int jt0 = oldA.s[noA2];
+    assert(jt0 < aTri.size() && jt0 != itriB && jt0 != itriA);
+    const unsigned int jno0 = adjacent_edge_idx(oldA, noA2, aTri);
+    aTri[jt0].s[jno0] = itriA;
+  }
+  if (oldB.s[noB1] != UINT_MAX) {
+    const unsigned int jt0 = oldB.s[noB1];
+    assert(jt0 < aTri.size() && jt0 != itriB && jt0 != itriA);
+    const unsigned int jno0 = adjacent_edge_idx(oldB, noB1, aTri);
+    aTri[jt0].s[jno0] = itriA;
+  }
+
+  {
+    Tri &triB = aTri[itriB];
+    triB.v[0] = oldB.v[noB1];
+    triB.v[1] = oldA.v[noA0];
+    triB.v[2] = oldB.v[noB0];
+    triB.s[0] = (int) itriA;
+    triB.s[1] = oldB.s[noB2];
+    triB.s[2] = oldA.s[noA1];
+  }
+  if (oldB.s[noB2] != UINT_MAX) {
+    const unsigned int jt0 = oldB.s[noB2];
+    assert(jt0 < aTri.size());
+    const unsigned int jno0 = adjacent_edge_idx(oldB, noB2, aTri);
+    aTri[jt0].s[jno0] = itriB;
+  }
+  if (oldA.s[noA1] != UINT_MAX) {
+    const unsigned int jt0 = oldA.s[noA1];
+    assert(jt0 < aTri.size());
+    const unsigned int jno0 = adjacent_edge_idx(oldA, noA1, aTri);
+    aTri[jt0].s[jno0] = itriB;
+  }
+  return true;
+}
+
+
 // --------------------
 
 class Mesh {
@@ -672,6 +756,20 @@ class Mesh {
       return true;
     }
     return false;
+  }
+
+  bool flip_edge(unsigned int ip0, unsigned int ip1) {
+    assert( vtxs.size() == vecs.size() );
+    unsigned int itri, inotri0, inotri1;
+    bool is_edge = find_edge_from_two_points(
+        itri, inotri0, inotri1,
+        ip0, ip1, vtxs, tris);
+    if (!is_edge) { return false; }
+    unsigned int iedge = 3 - inotri0 - inotri1;
+    adaptive::flip_edge(itri, iedge, vtxs, tris);
+    assert_tris(tris);
+    assert_mesh(vtxs, tris);
+    return true;
   }
 
   /**
