@@ -646,6 +646,14 @@ bool flip_edge(
   assert(oldA.v[noA1] == oldB.v[noB2]);
   assert(oldA.v[noA2] == oldB.v[noB1]);
 
+  {
+    unsigned int itri, inotri0, inotri1;
+    bool is_edge = find_edge_from_two_points(
+        itri, inotri0, inotri1,
+        oldA.v[noA0], oldB.v[noB0], aPo, aTri);
+    if (is_edge) { return false; }
+  }
+
   aPo[oldA.v[noA1]].e = itriA;
   aPo[oldA.v[noA1]].d = 0;
   aPo[oldA.v[noA0]].e = itriA;
